@@ -1,12 +1,17 @@
 # -*- encoding: utf-8 -*-
-require "#{File.dirname(__FILE__)}/../redjs_helper.rb"
 
-describe "Ruby Javascript API" do
+shared_examples_for "RedJS::Context" do
 
+  before :all do
+    unless defined?(RedJS::Context)
+      raise "missing RedJS::RedJS::Context - please expose your context e.g. `Context = V8::Context }`"
+    end
+  end
+  
   describe "Basic Evaluation" do
 
     before do
-      @cxt = Context.new
+      @cxt = RedJS::Context.new
     end
 
     it "can evaluate some javascript" do
@@ -129,7 +134,7 @@ describe "Ruby Javascript API" do
     before(:each) do
       @class = Class.new
       @instance = @class.new
-      @cxt = Context.new
+      @cxt = RedJS::Context.new
       @cxt['puts'] = lambda {|o| puts o.inspect}
       @cxt['o'] = @instance
     end
@@ -243,7 +248,7 @@ describe "Ruby Javascript API" do
       end
 
       it "reports ruby methods that do not exist as undefined" do
-        Context.new(:with => Object.new) do |cxt|
+        RedJS::Context.new(:with => Object.new) do |cxt|
           cxt.eval('this.foobar').should be_nil
         end
       end
@@ -256,7 +261,7 @@ describe "Ruby Javascript API" do
           end
           Class.new(self)
         end.new
-        Context.new(:with => o) do |cxt|
+        RedJS::Context.new(:with => o) do |cxt|
           cxt.eval('this.foo').should == 'FOO'
           cxt.eval('this.foo = "bar!"')
           cxt.eval('this.foo').should == "bar!"
@@ -268,7 +273,7 @@ describe "Ruby Javascript API" do
           def [](val)
             "FOO"
           end
-          Context.new(:with => new) do |cxt|
+          RedJS::Context.new(:with => new) do |cxt|
             cxt.eval('this.foo').should == "FOO"
             cxt.eval('this.bar').should == "FOO"
           end
@@ -287,7 +292,7 @@ describe "Ruby Javascript API" do
             @properties[name] = value
           end
 
-          Context.new(:with => new) do |cxt|
+          RedJS::Context.new(:with => new) do |cxt|
             cxt.eval('this.foo = "bar"').should == "bar"
             cxt.eval('this.foo').should == "bar"
           end
@@ -305,7 +310,7 @@ describe "Ruby Javascript API" do
           def []=(name, value)
             name =~ /foo/ ? @attrs[name] = "#{value}-diddly" : yield
           end
-          Context.new do |cxt|
+          RedJS::Context.new do |cxt|
             cxt['foo'] = new
             cxt.eval('typeof foo.bar').should == 'undefined'
             cxt.eval('foo.bar = "baz"')
@@ -328,7 +333,7 @@ describe "Ruby Javascript API" do
           def []=(i, value)
             i >= 5 ? @a[i] = "#{value}-diddly" : yield
           end
-          Context.new do |cxt|
+          RedJS::Context.new do |cxt|
             cxt['obj'] = new
             cxt.eval('typeof obj[1]').should == 'undefined'
             cxt.eval('obj[1] = "foo"')
@@ -347,7 +352,7 @@ describe "Ruby Javascript API" do
           end
           def bar=(value)
           end
-          Context.new do |cxt|
+          RedJS::Context.new do |cxt|
             cxt['o'] = new
             cxt.eval('o["[]"]').should == nil
             cxt.eval('o["[]="]').should == nil
@@ -367,7 +372,7 @@ describe "Ruby Javascript API" do
           end
           self
         end
-        Context.new do |cxt|
+        RedJS::Context.new do |cxt|
           cxt['foo'] = cls.new
           lambda {
             cxt.eval('foo.bar')
@@ -386,7 +391,7 @@ describe "Ruby Javascript API" do
           def foo=(val)
             raise "NO SET 4 U!"
           end
-          Context.new(:with => new)
+          RedJS::Context.new(:with => new)
         end
         lambda {
           cxt.eval(this.foo)
@@ -408,7 +413,7 @@ describe "Ruby Javascript API" do
           include m
           new
         end
-        Context.new(:with => o) do |cxt|
+        RedJS::Context.new(:with => o) do |cxt|
           cxt.eval('this.foo').should == "FOO"
           cxt.eval('this.foo = "bar!"')
           cxt.eval('this.foo').should == "bar!"
@@ -425,7 +430,7 @@ describe "Ruby Javascript API" do
         end
         Object.new.tap do |o|
           o.extend(m)
-          Context.new(:with => o) do |cxt|
+          RedJS::Context.new(:with => o) do |cxt|
             cxt.eval('this.foo').should == "FOO"
             cxt.eval('this.foo = "bar!"')
             cxt.eval('this.foo').should == "bar!"
@@ -441,7 +446,7 @@ describe "Ruby Javascript API" do
           def o.foo
             @foo ||= "FOO"
           end
-          Context.new(:with => o) do |cxt|
+          RedJS::Context.new(:with => o) do |cxt|
             cxt.eval("this.foo").should == "FOO"
             cxt.eval('this.foo = "bar!"')
             cxt.eval('this.foo').should == "bar!"
@@ -456,7 +461,7 @@ describe "Ruby Javascript API" do
           end
           self.new
         end
-        Context.new(:with => o) do |cxt|
+        RedJS::Context.new(:with => o) do |cxt|
           for method in Object.public_instance_methods
             cxt.eval("this['#{method}']").should be_nil
           end
@@ -576,7 +581,7 @@ describe "Ruby Javascript API" do
   describe "Calling JavaScript Code From Within Ruby" do
 
     before(:each) do
-      @cxt = Context.new
+      @cxt = RedJS::Context.new
     end
 
     it "allows you to capture a reference to a javascript function and call it" do
@@ -635,7 +640,7 @@ describe "Ruby Javascript API" do
 
   describe "Setting up the Host Environment" do
     before(:each) do
-      @cxt = Context.new
+      @cxt = RedJS::Context.new
     end
 
     it "can eval javascript with a given ruby object as the scope." do
@@ -651,7 +656,7 @@ describe "Ruby Javascript API" do
         new
       end
 
-      Context.new(:with => scope) do |cxt|
+      RedJS::Context.new(:with => scope) do |cxt|
         cxt.eval("plus(1,2)", "test").should == 3
         cxt.eval("minus(10, 20)", "test").should == -10
         cxt.eval("this").should be(scope)
@@ -754,7 +759,7 @@ describe "Ruby Javascript API" do
     # it "can limit the number of instructions that are executed in the context" do
     #   pending "haven't figured out how to constrain resources in V8"
     #   lambda {
-    #     Context.new do |cxt|
+    #     RedJS::Context.new do |cxt|
     #       cxt.instruction_limit = 100 * 1000
     #       timeout(1) do
     #         cxt.eval('while (true);')
@@ -781,14 +786,14 @@ describe "Ruby Javascript API" do
   foo = 'bar'
   five();
       EOJS
-      Context.new do |cxt|
+      RedJS::Context.new do |cxt|
         cxt.eval(source, "StringIO").should == 5
         cxt['foo'].should == "bar"
       end
     end
 
     it "can load a file into the runtime" do
-      Context.new do |cxt|
+      RedJS::Context.new do |cxt|
         cxt.load(Pathname(__FILE__).dirname.join("loadme.js")).should == "I am Legend"
       end
     end
@@ -797,7 +802,7 @@ describe "Ruby Javascript API" do
   describe "A Javascript Object Reflected Into Ruby" do
 
     before(:each) do
-      @cxt = Context.new
+      @cxt = RedJS::Context.new
       @o = @cxt.eval("o = new Object(); o")
     end
 
@@ -824,7 +829,7 @@ describe "Ruby Javascript API" do
     end
 
     it "traverses the prototype chain when hash accessing properties from the ruby object" do
-      Context.new do |cxt|
+      RedJS::Context.new do |cxt|
         cxt.eval(<<EOJS)['bar'].should == "baz"
 function Foo() {}
 Foo.prototype.bar = 'baz'
@@ -847,18 +852,18 @@ EOJS
   describe "Exception Handling" do
     it "raises javascript exceptions as ruby exceptions" do
       lambda {
-        Context.new.eval('foo')
+        RedJS::Context.new.eval('foo')
       }.should raise_error(JSError)
     end
 
     it "can handle syntax errors" do
       lambda {
-        Context.eval('does not compiles')
+        RedJS::Context.eval('does not compiles')
       }.should raise_error
     end
 
     it "translates ruby exceptions into javascript exceptions if they are thrown from code called it javascript" do
-      Context.new do |cxt|
+      RedJS::Context.new do |cxt|
         cxt['rputs'] = lambda {|msg| rputs msg}
         cxt['boom'] = lambda do
           raise "BOOM!"
@@ -868,7 +873,7 @@ EOJS
     end
 
     it "will allow exceptions to pass through multiple languages boundaries (i.e. js -> rb -> js -> rb)" do
-      Context.new do |cxt|
+      RedJS::Context.new do |cxt|
         cxt['one'] = lambda do
           cxt.eval('two()', 'one.js')
         end
@@ -891,7 +896,7 @@ EOJS
   describe "A Ruby class reflected into JavaScript" do
     it "will extend instances of the class when properties are added to the corresponding JavaScript constructor's prototype" do
       Class.new.tap do |cls|
-        Context.new do |cxt|
+        RedJS::Context.new do |cxt|
           cxt['RubyObject'] = cls
           cxt.eval('RubyObject.prototype.foo = function() {return "bar"}')
           cxt['o'] = cls.new
@@ -903,7 +908,7 @@ EOJS
     it "will extend instances of subclasses when properties are added to the corresponding JavaScript constructor's prototype" do
       superclass = Class.new
       subclass = Class.new(superclass)
-      Context.new do |cxt|
+      RedJS::Context.new do |cxt|
         cxt['SuperClass'] = superclass
         cxt['SubClass'] = subclass
         cxt['o'] = subclass.new
@@ -912,4 +917,12 @@ EOJS
       end
     end
   end
+  
+  private
+  
+  def raise_js_error
+    # TODO warn about JSError not being exposed as RedJS::JSError ?!
+    defined?(RedJS::JSError) ? raise_error(RedJS::JSError) : raise_error
+  end
+  
 end
